@@ -1,52 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Peca } from '../types';
-
-// Mesmos dados mock (depois vem da API)
-const pecasMock: Peca[] = [
-  {
-    id: '1',
-    nome: 'Memória RAM DDR4 8GB',
-    categoria: 'computador',
-    quantidade: 15,
-    status: 'disponivel',
-    descricao: 'Memória compatível com Dell/HP'
-  },
-  {
-    id: '2',
-    nome: 'SSD 256GB Kingston',
-    categoria: 'notebook',
-    quantidade: 8,
-    status: 'disponivel',
-    descricao: 'Para upgrade de notebooks'
-  },
-  {
-    id: '3',
-    nome: 'Teclado USB Logitech',
-    categoria: 'computador',
-    quantidade: 3,
-    status: 'enviada',
-  },
-  {
-    id: '4',
-    nome: 'Impressora HP LaserJet',
-    categoria: 'impressora',
-    quantidade: 2,
-    status: 'enviada',
-  },
-  {
-    id: '5',
-    nome: 'Ribbon Zebra Preto',
-    categoria: 'ribbon',
-    quantidade: 20,
-    status: 'disponivel',
-  },
-];
+import { buscarPeca, atualizarPeca } from '../services/api';
 
 export default function EditarPeca() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
+  const [loading, setLoading] = useState(true);
+  const [salvando, setSalvando] = useState(false);
   const [peca, setPeca] = useState<Peca | null>(null);
   const [nome, setNome] = useState('');
   const [categoria, setCategoria] = useState<Peca['categoria']>('computador');
@@ -55,44 +17,69 @@ export default function EditarPeca() {
   const [descricao, setDescricao] = useState('');
 
   useEffect(() => {
-    // Buscar a peça pelo ID (depois será da API)
-    const pecaEncontrada = pecasMock.find(p => p.id === id);
-    
-    if (pecaEncontrada) {
-      setPeca(pecaEncontrada);
-      setNome(pecaEncontrada.nome);
-      setCategoria(pecaEncontrada.categoria);
-      setQuantidade(pecaEncontrada.quantidade);
-      setStatus(pecaEncontrada.status);
-      setDescricao(pecaEncontrada.descricao || '');
-    }
+    const fetchPeca = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        const data = await buscarPeca(id);
+        setPeca(data);
+        setNome(data.nome);
+        setCategoria(data.categoria);
+        setQuantidade(data.quantidade);
+        setStatus(data.status);
+        setDescricao(data.descricao || '');
+      } catch (error) {
+        console.error('Erro ao buscar peça:', error);
+        alert('Erro ao carregar dados da peça');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPeca();
   }, [id]);
 
-  const handleSalvar = (e: React.FormEvent) => {
+  const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Aqui você faria o PUT/PATCH na API
-    const pecaAtualizada: Peca = {
-      id: id!,
-      nome,
-      categoria,
-      quantidade,
-      status,
-      descricao: descricao || undefined,
-    };
+    if (!id) return;
     
-    console.log('Peça atualizada:', pecaAtualizada);
-    
-    // Mostrar mensagem de sucesso
-    alert('Peça atualizada com sucesso!');
-    
-    // Voltar para a home
-    navigate('/');
+    try {
+      setSalvando(true);
+      
+      await atualizarPeca(id, {
+        nome,
+        categoria,
+        quantidade,
+        status,
+        descricao: descricao || undefined,
+      });
+      
+      alert('Peça atualizada com sucesso!');
+      navigate('/');
+    } catch (error) {
+      console.error('Erro ao atualizar peça:', error);
+      alert('Erro ao atualizar peça');
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const handleCancelar = () => {
     navigate('/');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="text-gray-600 mt-4">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!peca) {
     return (
@@ -179,7 +166,7 @@ export default function EditarPeca() {
               />
             </div>
 
-            {/* Status - Destaque especial */}
+            {/* Status */}
             <div className="border-2 border-blue-200 bg-blue-50 p-4 rounded-lg">
               <label className="block text-sm font-medium text-gray-700 mb-3">
                 Status da Peça *
@@ -236,15 +223,17 @@ export default function EditarPeca() {
             <div className="flex gap-4 pt-4">
               <button
                 type="submit"
-                className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                disabled={salvando}
+                className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-blue-300"
               >
-                Salvar Alterações
+                {salvando ? 'Salvando...' : 'Salvar Alterações'}
               </button>
               
               <button
                 type="button"
                 onClick={handleCancelar}
-                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                disabled={salvando}
+                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:bg-gray-100"
               >
                 Cancelar
               </button>

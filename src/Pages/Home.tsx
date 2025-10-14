@@ -1,66 +1,49 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Peca, Categoria, Status } from '../types';
-
-// Dados de exemplo (depois você vai buscar da API)
-const pecasMock: Peca[] = [
-  {
-    id: '1',
-    nome: 'Memória RAM DDR4 8GB',
-    categoria: 'computador',
-    quantidade: 15,
-    status: 'disponivel',
-    descricao: 'Memória compatível com Dell/HP'
-  },
-  {
-    id: '2',
-    nome: 'SSD 256GB Kingston',
-    categoria: 'notebook',
-    quantidade: 8,
-    status: 'disponivel',
-    descricao: 'Para upgrade de notebooks'
-  },
-  {
-    id: '3',
-    nome: 'Teclado USB Logitech',
-    categoria: 'computador',
-    quantidade: 3,
-    status: 'enviada',
-  },
-  {
-    id: '4',
-    nome: 'Impressora HP LaserJet',
-    categoria: 'impressora',
-    quantidade: 2,
-    status: 'enviada',
-  },
-  {
-    id: '5',
-    nome: 'Ribbon Zebra Preto',
-    categoria: 'ribbon',
-    quantidade: 20,
-    status: 'disponivel',
-  },
-];
+import { listarPecas } from '../services/api';
 
 export default function Home() {
+  const navigate = useNavigate();
+  
+  const [pecas, setPecas] = useState<Peca[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  
   const [busca, setBusca] = useState('');
   const [categoriaFiltro, setCategoriaFiltro] = useState<Categoria>('todas');
   const [statusFiltro, setStatusFiltro] = useState<Status>('todos');
 
-  const navigate = useNavigate();
+  // Buscar peças da API quando o componente montar
+  useEffect(() => {
+    const fetchPecas = async () => {
+      try {
+        setLoading(true);
+        const data = await listarPecas();
+        setPecas(data);
+        setErro(null);
+      } catch (error) {
+        console.error('Erro ao carregar peças:', error);
+        setErro('Erro ao carregar peças. Verifique se o backend está rodando.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPecas();
+  }, []);
 
   // Filtrar peças com base nos critérios
   const pecasFiltradas = useMemo(() => {
-    return pecasMock.filter((peca) => {
+    return pecas.filter((peca) => {
       const matchBusca = peca.nome.toLowerCase().includes(busca.toLowerCase()) ||
-        peca.descricao?.toLowerCase().includes(busca.toLowerCase());
+                         peca.descricao?.toLowerCase().includes(busca.toLowerCase());
       const matchCategoria = categoriaFiltro === 'todas' || peca.categoria === categoriaFiltro;
       const matchStatus = statusFiltro === 'todos' || peca.status === statusFiltro;
 
       return matchBusca && matchCategoria && matchStatus;
     });
-  }, [busca, categoriaFiltro, statusFiltro]);
+  }, [pecas, busca, categoriaFiltro, statusFiltro]);
 
   const getStatusColor = (status: Peca['status']) => {
     const colors = {
@@ -151,64 +134,83 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Loading */}
+        {loading && (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="text-gray-600 mt-4">Carregando peças...</p>
+          </div>
+        )}
+
+        {/* Erro */}
+        {erro && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            <p className="font-semibold">Erro:</p>
+            <p>{erro}</p>
+          </div>
+        )}
+
         {/* Lista de Peças */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {pecasFiltradas.map((peca) => (
-            <div
-              key={peca.id}
-              onClick={() => navigate(`/editar/${peca.id}`)}
-              className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 cursor-pointer"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <h3 className="text-lg font-semibold text-gray-800">{peca.nome}</h3>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(peca.status)}`}>
-                  {getStatusLabel(peca.status)}
-                </span>
-              </div>
-
-              {peca.descricao && (
-                <p className="text-sm text-gray-600 mb-4">{peca.descricao}</p>
-              )}
-
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Categoria:</span>
-                  <span className="font-medium text-gray-700 capitalize">{peca.categoria}</span>
+        {!loading && !erro && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {pecasFiltradas.map((peca) => (
+              <div 
+                key={peca.id} 
+                onClick={() => navigate(`/editar/${peca.id}`)}
+                className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 cursor-pointer"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="text-lg font-semibold text-gray-800">{peca.nome}</h3>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(peca.status)}`}>
+                    {getStatusLabel(peca.status)}
+                  </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Quantidade:</span>
-                  <span className="font-medium text-gray-700">{peca.quantidade}</span>
+
+                {peca.descricao && (
+                  <p className="text-sm text-gray-600 mb-4">{peca.descricao}</p>
+                )}
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Categoria:</span>
+                    <span className="font-medium text-gray-700 capitalize">{peca.categoria}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Quantidade:</span>
+                    <span className="font-medium text-gray-700">{peca.quantidade}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Mensagem quando não há resultados */}
-        {pecasFiltradas.length === 0 && (
+        {!loading && !erro && pecasFiltradas.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">Nenhuma peça encontrada com os filtros aplicados.</p>
           </div>
         )}
       </main>
+
       {/* Botão Flutuante - Adicionar Nova Peça */}
       <button
         onClick={() => navigate('/nova')}
-        className="fixed bottom-6 right-6 bg-blue-600 text-white w-16 h-16 rounded-full shadow-lg hover:bg-blue-700 hover:shadow-xl transition-all duration-200 flex items-center justify-center group z-50"
+        className="fixed bottom-6 right-6 bg-blue-600 text-white w-16 h-16 rounded-full shadow-lg hover:bg-blue-700 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-50"
         aria-label="Adicionar nova peça"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-8 w-8"
-          fill="none"
-          viewBox="0 0 24 24"
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          className="h-8 w-8" 
+          fill="none" 
+          viewBox="0 0 24 24" 
           stroke="currentColor"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 4v16m8-8H4"
+          <path 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            strokeWidth={2} 
+            d="M12 4v16m8-8H4" 
           />
         </svg>
       </button>

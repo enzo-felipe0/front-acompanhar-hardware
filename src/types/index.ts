@@ -5,6 +5,8 @@ export interface Peca {
   quantidade: number;
   status: 'disponivel' | 'enviada';
   descricao?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type Categoria = Peca['categoria'] | 'todas';

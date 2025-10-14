@@ -1,35 +1,40 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Peca } from '../types';
+import { criarPeca } from '../services/api';
 
 export default function NovaPeca() {
   const navigate = useNavigate();
   
+  const [salvando, setSalvando] = useState(false);
   const [nome, setNome] = useState('');
   const [categoria, setCategoria] = useState<Peca['categoria']>('computador');
   const [quantidade, setQuantidade] = useState(1);
   const [status, setStatus] = useState<Peca['status']>('disponivel');
   const [descricao, setDescricao] = useState('');
 
-  const handleSalvar = (e: React.FormEvent) => {
+  const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Aqui você faria o POST na API
-    const novaPeca: Omit<Peca, 'id'> = {
-      nome,
-      categoria,
-      quantidade,
-      status,
-      descricao: descricao || undefined,
-    };
-    
-    console.log('Nova peça criada:', novaPeca);
-    
-    // Mostrar mensagem de sucesso
-    alert('Peça cadastrada com sucesso!');
-    
-    // Voltar para a home
-    navigate('/');
+    try {
+      setSalvando(true);
+      
+      await criarPeca({
+        nome,
+        categoria,
+        quantidade,
+        status,
+        descricao: descricao || undefined,
+      });
+      
+      alert('Peça cadastrada com sucesso!');
+      navigate('/');
+    } catch (error) {
+      console.error('Erro ao criar peça:', error);
+      alert('Erro ao cadastrar peça');
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const handleCancelar = () => {
@@ -43,9 +48,9 @@ export default function NovaPeca() {
         <div className="container mx-auto px-4 py-6">
           <button
             onClick={handleCancelar}
-            className="text-blue-100 hover:text-white mb-2 flex items-center gap-2 text-5xl"
+            className="text-blue-100 hover:text-white mb-2 flex items-center gap-2"
           >
-            ←
+            ← Voltar
           </button>
           <h1 className="text-3xl font-bold">Nova Peça</h1>
           <p className="text-blue-100 mt-1">Cadastre uma nova peça no estoque</p>
@@ -163,15 +168,17 @@ export default function NovaPeca() {
             <div className="flex gap-4 pt-4">
               <button
                 type="submit"
-                className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                disabled={salvando}
+                className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-blue-300"
               >
-                Cadastrar Peça
+                {salvando ? 'Cadastrando...' : 'Cadastrar Peça'}
               </button>
               
               <button
                 type="button"
                 onClick={handleCancelar}
-                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                disabled={salvando}
+                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:bg-gray-100"
               >
                 Cancelar
               </button>
