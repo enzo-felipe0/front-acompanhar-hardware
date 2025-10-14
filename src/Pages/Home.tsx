@@ -2,9 +2,11 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Peca, Categoria, Status } from '../types';
 import { listarPecas } from '../services/api';
+import { logout, obterUsuario } from '../services/auth';
 
 export default function Home() {
   const navigate = useNavigate();
+  const usuario = obterUsuario();
   
   const [pecas, setPecas] = useState<Peca[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,13 +63,31 @@ export default function Home() {
     return labels[status];
   };
 
+   const handleLogout = () => { 
+    logout();
+    navigate('/login');
+  };
+
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-blue-600 text-white shadow-lg">
         <div className="container mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold">Controle de Peças - TI</h1>
-          <p className="text-blue-100 mt-1">Gerenciamento de hardware e equipamentos</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold">Controle de Peças - TI</h1>
+              <p className="text-blue-100 mt-1">
+                Olá, {usuario?.nome || 'Usuário'}! 👋
+              </p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="bg-blue-500 hover:bg-blue-400 px-4 py-2 rounded-lg transition-colors"
+            >
+              Sair
+            </button>
+          </div>
         </div>
       </header>
 
